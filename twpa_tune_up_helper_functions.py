@@ -69,8 +69,12 @@ def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pum
     SNRs_reshaped = np.reshape(SNRs, (power_range,freq_range))
 
     region = get_config_for_high_SNR(SNRs_reshaped,x=pump_powers, y=pump_freqs,std_dev=std_highSNR)
-
-    print("="*20+"\nHigh SNR Regions:\n(power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n"+"="*20)
+    
+    meanSNR = np.mean(SNRs_reshaped)
+    
+    std_message = f"[i.e. SNR > mean(SNR) = {meanSNR}) * std_dev(SNR) = {std_highSNR}]"
+    
+    print("="*30+f"\n\nHigh SNR Regions:\n{std_message}\n\nFormat: (power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n\n"+"="*30)
     return region 
     
 def calculate_SNRs(average_lin_signal,SAxdata,cutOff=10e3):
