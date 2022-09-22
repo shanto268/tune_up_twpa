@@ -6,7 +6,7 @@ from fitTools.utilities import Watt2dBm, dBm2Watt, VNA2dBm
 from twpa_tune_up_helper_functions import *
 
 if __name__ == "__main__":
-    labber_data_file = str(sys.argv[1])
+    labber_data_file = str(input("Labber File Location: "))
     repeated = int(input("Number of Repeations: "))
     power_range = int(input("Number of Points for Power: "))
     freq_range = int(input("Number of Points for Frequency: "))
