@@ -2,8 +2,11 @@
 
 # Usage:
 
-- `$ python tune_up_twpa.py path/to/labber/log.hdf5`
+- `$ python tune_up_twpa.py`
 
+or ** Run on Spyder **
+
+---
 
 ## To Do:
 
@@ -11,3 +14,5 @@
 - [ ] Automate Use of Hyperparameters (string names, ranges, etc)
 - [ ] Stable High SNR Regime Finder Implementation
 - [ ] Usage Document (works with certain order and freq, power sweeps only)
+
+---
