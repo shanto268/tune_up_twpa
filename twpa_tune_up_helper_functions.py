@@ -4,6 +4,7 @@ import os
 import sys
 import matplotlib
 
+
 from datetime import datetime
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
@@ -19,41 +20,52 @@ def outliers_removed(arr, std_dev=2):
     no_outliers = arr[not_outlier]
     return no_outliers
 
-def get_signal_stats(linsig,std_dev=2):
+def get_signal_stats(linsig,SAxdata,cutOff=10e3):
     """
     inputs: (linsig:: array (SA Signal in Watts), std_dev:: int (cut off for outlier)
     returns: [float, float, float] :: [snr, signal_max, average_noise_floor] (all in dBm)
     """
-    peaks, peak_prop = find_peaks(linsig)
-    all_data = linsig[peaks]
-    noise_data = outliers_removed(linsig[peaks],std_dev)
-    noise_floor = Watt2dBm(noise_data.mean())
-    max_signal = Watt2dBm(max(all_data))
-    snr = max_signal - noise_floor
+    # James Style
+    max_ind = np.argmax(linsig)
+    max_val = np.max(linsig)
+    mask = np.logical_or(SAxdata < SAxdata[max_ind]-cutOff, SAxdata > SAxdata[max_ind]+cutOff)
+    noisetemp = linsig[mask]
+    noise_floor = np.mean(noisetemp)
+    snr = Watt2dBm(max_val) - Watt2dBm(noise_floor)
+    noise_floor = Watt2dBm(noise_floor)
+    max_signal = Watt2dBm(max_val)
     return [snr, max_signal, noise_floor]
+
+    # peaks, peak_prop = find_peaks(linsig)
+    # all_data = linsig[peaks]
+    # noise_data = outliers_removed(linsig[peaks],std_dev)
+    # noise_floor = Watt2dBm(noise_data.mean())
+    # max_signal = Watt2dBm(max(all_data))
+    # snr = max_signal - noise_floor
+    # return [snr, max_signal, noise_floor]
     
 
-def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, std_SNR=2.5, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR', fig_type=".png", path="figures"):
+def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, cutOff=10e3, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR', fig_type=".png", path="figures"):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
     
     pump_freqs = np.linspace(pump_freq[0][0],pump_freq[-1][-1],freq_range)
     pump_powers = np.linspace(pump_power[0][0],pump_power[-1][-1],power_range)
 
-    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,std_SNR)
+    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
     
     SNRs_reshaped = np.reshape(SNRs, (power_range,freq_range))
     
     create_heatmap(SNRs_reshaped, pump_powers, pump_freqs, title, xlabel, ylabel, zlabel,fig_type,path)
     
-def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pump_power, std_SNR=2.5, std_highSNR=1.75):
+def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pump_power, SAxdata, cutOff=10e3, std_highSNR=1.75):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
     
     pump_freqs = np.linspace(pump_freq[0][0],pump_freq[-1][-1],freq_range)
     pump_powers = np.linspace(pump_power[0][0],pump_power[-1][-1],power_range)
 
-    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,std_SNR)
+    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
     SNRs_reshaped = np.reshape(SNRs, (power_range,freq_range))
 
     region = get_config_for_high_SNR(SNRs_reshaped,x=pump_powers, y=pump_freqs,std_dev=std_highSNR)
@@ -61,13 +73,13 @@ def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pum
     print("="*20+"\nHigh SNR Regions:\n(power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n"+"="*20)
     return region 
     
-def calculate_SNRs(average_lin_signal,std_SNR):
+def calculate_SNRs(average_lin_signal,SAxdata,cutOff=10e3):
     SNRs = []
     max_signals = []
     noise_floors = []
 
     for signal in average_lin_signal:
-        snrs, max_signal, noise_floor = get_signal_stats(signal,std_dev=std_SNR)
+        snrs, max_signal, noise_floor = get_signal_stats(signal,SAxdata,cutOff)
         SNRs.append(snrs)
         max_signals.append(max_signal)
         noise_floors.append(noise_floor)
