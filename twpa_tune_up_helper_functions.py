@@ -78,7 +78,7 @@ def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump
 
     SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
     
-    SNRs_reshaped = np.reshape(SNRs, (power_range,freq_range))
+    SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range))
     
     create_heatmap(SNRs_reshaped, pump_powers, pump_freqs, title, xlabel, ylabel, zlabel,fig_type,path)
     
