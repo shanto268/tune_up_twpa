@@ -10,6 +10,30 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from scipy.signal import find_peaks, peak_prominences, peak_widths
 from fitTools.utilities import Watt2dBm, dBm2Watt, VNA2dBm
+import Labber
+
+
+
+def calculate_mean_SNR_from_Labber_file(labber_data_file5, cutOff = 10e3):
+    """
+    """
+    lf = Labber.LogFile(labber_data_file)
+    SA_channel_name = 'HP Spectrum Analyzer - Signal'
+
+
+    signal = lf.getData(name = SA_channel_name)
+    linsig = dBm2Watt(signal)
+
+    SAxdata, SAydata = lf.getTraceXY(y_channel=SA_channel_name, entry=0) # gives last trace from SA
+    
+    snrs = 0
+    for i in range(len(signal)):
+        snrs += get_signal_stats(dBm2Watt(signal[i]), SAxdata, cutOff)[0]
+
+    snr_mean = snrs / len(signal)
+    return snr_mean
+
+
 
 def outliers_removed(arr, std_dev=2):
     mean = np.mean(arr)

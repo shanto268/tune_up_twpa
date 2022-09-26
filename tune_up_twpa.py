@@ -11,7 +11,7 @@ if __name__ == "__main__":
     power_range = int(input("Number of Points for Power: "))
     freq_range = int(input("Number of Points for Frequency: "))
 
-    std_highSNR = 1.75 # cut off point for determining high SNR
+    std_highSNR = 1.15 # cut off point for determining high SNR
     cutOff_around_SA_peak = 10e3 # Hz
 
     lf = Labber.LogFile(labber_data_file)
@@ -30,7 +30,13 @@ if __name__ == "__main__":
 
     plt.rcParams['savefig.facecolor']='white'
 
-    get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, cutOff=cutOff_around_SA_peak, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR', fig_type=".png", path="figures")
+    get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq,
+                       pump_power, SAxdata, cutOff=cutOff_around_SA_peak,
+                       title="TWPA Tune Up", xlabel='Pump Power (dBm)', 
+                       ylabel='Pump Frequency (Hz)', zlabel='SNR', 
+                       fig_type=".png", path="figures")
 
 
-    get_high_SNR_regions(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, cutOff=cutOff_around_SA_peak, std_highSNR=std_highSNR)
+    get_high_SNR_regions(signal,repeated, freq_range, power_range, pump_freq,
+                         pump_power, SAxdata, cutOff=cutOff_around_SA_peak, 
+                         std_highSNR=std_highSNR)
