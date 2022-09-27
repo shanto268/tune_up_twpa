@@ -94,7 +94,7 @@ def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pum
 
     meanSNR = np.mean(SNRs_reshaped)
     region = get_config_for_high_SNR(SNRs_reshaped,x=pump_powers, y=pump_freqs,std_dev=std_highSNR)
-    std_message = f"Region of High SNR [i.e SNR > mean(SNR) * std_dev(SNR)];\nmean(SNR) = {meanSNR}, std_dev(SNR) = {std_highSNR}"
+    std_message = f"Region of High SNR\n[i.e SNR > mean(SNR) * std_dev(SNR)]\nmean(SNR) = {meanSNR:.3f}, std_dev(SNR) = {std_highSNR:.2f}"
     create_heatmap(region, pump_powers, pump_freqs, title = std_message, xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',)
 
     # print("="*30+f"\n\nHigh SNR Regions:\n{std_message}\n\nFormat: (power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n\n"+"="*30)
@@ -141,7 +141,12 @@ def create_heatmap(z, x, y, title="", xlabel='', ylabel='', zlabel='',fig_type="
     cbar = heatmap.colorbar(im)
     cbar.ax.set_ylabel(zlabel)
     figname = figure_name_maker(title,fig_type,path)
-    plt.savefig(figname)
+    try:
+        plt.savefig(figname)
+    except:
+        dt = datetime.now().strftime("_%m_%d_%Y_%H%M%S")
+        uid_name = "_".join(figname.split("/")[-1].split("_")[:1]) + dt
+        plt.savefig(path+"/"+f"{uid_name}"+fig_type)
     plt.show()
     
 
