@@ -10,6 +10,30 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from scipy.signal import find_peaks, peak_prominences, peak_widths
 from fitTools.utilities import Watt2dBm, dBm2Watt, VNA2dBm
+import Labber
+
+
+
+def calculate_mean_SNR_from_Labber_file(labber_data_file5, cutOff = 10e3):
+    """
+    """
+    lf = Labber.LogFile(labber_data_file)
+    SA_channel_name = 'HP Spectrum Analyzer - Signal'
+
+
+    signal = lf.getData(name = SA_channel_name)
+    linsig = dBm2Watt(signal)
+
+    SAxdata, SAydata = lf.getTraceXY(y_channel=SA_channel_name, entry=0) # gives last trace from SA
+    
+    snrs = 0
+    for i in range(len(signal)):
+        snrs += get_signal_stats(dBm2Watt(signal[i]), SAxdata, cutOff)[0]
+
+    snr_mean = snrs / len(signal)
+    return snr_mean
+
+
 
 def outliers_removed(arr, std_dev=2):
     mean = np.mean(arr)
@@ -54,29 +78,28 @@ def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump
 
     SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
     
-    SNRs_reshaped = np.reshape(SNRs, (power_range,freq_range))
+    SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range))
     
     create_heatmap(SNRs_reshaped, pump_powers, pump_freqs, title, xlabel, ylabel, zlabel,fig_type,path)
     
 def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pump_power, SAxdata, cutOff=10e3, std_highSNR=1.75):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
-    
+
     pump_freqs = np.linspace(pump_freq[0][0],pump_freq[-1][-1],freq_range)
     pump_powers = np.linspace(pump_power[0][0],pump_power[-1][-1],power_range)
 
     SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
-    SNRs_reshaped = np.reshape(SNRs, (power_range,freq_range))
+    SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range))
 
-    region = get_config_for_high_SNR(SNRs_reshaped,x=pump_powers, y=pump_freqs,std_dev=std_highSNR)
-    
     meanSNR = np.mean(SNRs_reshaped)
-    
-    std_message = f"[i.e. SNR > mean(SNR) = {meanSNR}) * std_dev(SNR) = {std_highSNR}]"
-    
-    print("="*30+f"\n\nHigh SNR Regions:\n{std_message}\n\nFormat: (power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n\n"+"="*30)
-    return region 
-    
+    region = get_config_for_high_SNR(SNRs_reshaped,x=pump_powers, y=pump_freqs,std_dev=std_highSNR)
+    std_message = f"Region of High SNR\n[i.e SNR > mean(SNR) * std_dev(SNR)]\nmean(SNR) = {meanSNR:.3f}, std_dev(SNR) = {std_highSNR:.2f}"
+    create_heatmap(region, pump_powers, pump_freqs, title = std_message, xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',)
+
+    # print("="*30+f"\n\nHigh SNR Regions:\n{std_message}\n\nFormat: (power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n\n"+"="*30)
+    return region
+
 def calculate_SNRs(average_lin_signal,SAxdata,cutOff=10e3):
     SNRs = []
     max_signals = []
@@ -107,7 +130,8 @@ def figure_name_maker(title,fig_type=".png",path="figures"):
     name = abs_path + title + dt + fig_type 
     return name
 
-def create_heatmap(z, x, y, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',fig_type=".png",path="figures"):
+# def create_heatmap(z, x, y, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',fig_type=".png",path="figures"):
+def create_heatmap(z, x, y, title="", xlabel='', ylabel='', zlabel='',fig_type=".png",path="figures"):
     heatmap, ax = plt.subplots(figsize=(8,6))
     
     im = ax.imshow(z,cmap='inferno',extent=[x[0],x[-1],y[0],y[-1]],interpolation='nearest',origin='lower',aspect='auto')
@@ -117,9 +141,15 @@ def create_heatmap(z, x, y, title="TWPA Tune Up", xlabel='Pump Power (dBm)', yla
     cbar = heatmap.colorbar(im)
     cbar.ax.set_ylabel(zlabel)
     figname = figure_name_maker(title,fig_type,path)
-    plt.savefig(figname)
+    try:
+        plt.savefig(figname)
+    except:
+        dt = datetime.now().strftime("_%m_%d_%Y_%H%M%S")
+        uid_name = "_".join(figname.split("/")[-1].split("_")[:1]) + dt
+        plt.savefig(path+"/"+f"{uid_name}"+fig_type)
     plt.show()
     
+
     
 def get_2d_array_N_std_greater_than_mean(arr, std_dev=2):
     mean = np.mean(arr)
@@ -135,18 +165,20 @@ def get_config_for_high_SNR(arr,x,y,std_dev=2):
     mean = np.mean(arr)
     standard_deviation = np.std(arr)
     distance_from_mean = abs(arr - mean)
-    
     min_deviations = std_dev
     high_values = mean + min_deviations * standard_deviation
+
+    arr[arr < high_values] = np.nan
+    return arr
+
+    # mask = (arr > high_values)
+    # indices = np.where(mask)
     
-    mask = (arr > high_values)
-    indices = np.where(mask)
-    
-    snrs = arr[indices]
-    xvals = x[indices[0]]
-    yvals = y[indices[1]]
+    # snrs = arr[indices]
+    # xvals = x[indices[0]]
+    # yvals = y[indices[1]]
         
-    return list(zip(xvals,yvals,snrs))
+    # return list(zip(xvals,yvals,snrs))
 
 def get_index_for_high_SNR(arr,x,y,std_dev=2):
     mean = np.mean(arr)
