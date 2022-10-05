@@ -14,7 +14,7 @@ import Labber
 
 
 
-def calculate_mean_SNR_from_Labber_file(labber_data_file5, cutOff = 10e3):
+def calculate_mean_SNR_from_Labber_file(labber_data_file, cutOff = 10e3):
     """
     """
     lf = Labber.LogFile(labber_data_file)
