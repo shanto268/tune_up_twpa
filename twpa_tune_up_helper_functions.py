@@ -96,9 +96,8 @@ def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pum
     region = get_config_for_high_SNR(SNRs_reshaped,x=pump_powers, y=pump_freqs,std_dev=std_highSNR)
     std_message = f"Region of High SNR\n[i.e SNR > mean(SNR) * std_dev(SNR)]\nmean(SNR) = {meanSNR:.3f}, std_dev(SNR) = {std_highSNR:.2f}"
     create_heatmap(region, pump_powers, pump_freqs, title = std_message, xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',)
-
-    # print("="*30+f"\n\nHigh SNR Regions:\n{std_message}\n\nFormat: (power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n\n"+"="*30)
-    return region
+    print_coordinates(get_coordinates(pump_powers, pump_freqs,region))
+    return get_coordinates(pump_powers, pump_freqs,region)
 
 def calculate_SNRs(average_lin_signal,SAxdata,cutOff=10e3):
     SNRs = []
@@ -129,6 +128,21 @@ def figure_name_maker(title,fig_type=".png",path="figures"):
     dt = now.strftime("_%m_%d_%Y_%H%M%S")
     name = abs_path + title + dt + fig_type 
     return name
+
+
+def get_coordinates(x,y,z):
+    mask = np.isfinite(z)
+    xx,yy = np.array(np.meshgrid(x, y))
+    masked_x = mask*xx
+    masked_y = mask*yy
+    x = masked_x[masked_x>0]
+    y = masked_y[masked_y>0]
+    z = z[np.isfinite(z)]
+    return np.array((x,y,z)).T
+
+def print_coordinates(arr):
+    for i in range(arr.shape[0]):
+        print(f"SNR = {arr[i][2]:.3f} for Power = {arr[i][1]}and Frequency = {arr[i][0]}")
 
 # def create_heatmap(z, x, y, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',fig_type=".png",path="figures"):
 def create_heatmap(z, x, y, title="", xlabel='', ylabel='', zlabel='',fig_type=".png",path="figures"):
