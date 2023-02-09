@@ -16,9 +16,9 @@ if __name__ == "__main__":
 
     lf = Labber.LogFile(labber_data_file)
 
-    power_channel_name = "10002F25 - Power"
-    freq_channel_name = "10002F25 - Frequency"
-    SA_channel_name = 'HP Spectrum Analyzer - Signal'
+    power_channel_name = lf.getStepChannels()[1]["name"]
+    freq_channel_name = lf.getStepChannels()[2]["name"]
+    SA_channel_name = lf.getLogChannels()[0]["name"]
 
     pump_power = lf.getData(name = power_channel_name)
     pump_freq = lf.getData(name = freq_channel_name)
