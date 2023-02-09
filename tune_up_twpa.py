@@ -6,7 +6,9 @@ from fitTools.utilities import Watt2dBm, dBm2Watt, VNA2dBm
 from twpa_tune_up_helper_functions import *
 
 if __name__ == "__main__":
-    labber_data_file = str(input("Labber File Location: "))
+    labber_data_file = str(input("File Location of TWPA Data: "))
+    ref_data_file = str(input("File Location of Reference Data: "))
+
     lf = Labber.LogFile(labber_data_file)
 
     repeated = len(lf.getStepChannels()[0]["values"])
@@ -31,13 +33,21 @@ if __name__ == "__main__":
 
     plt.rcParams['savefig.facecolor']='white'
 
+    ref_snr, ref_max_signal, ref_noise_floors = get_reference_data_SNR(ref_data_file,cutOff_around_SA_peak)
+
+    print("\n\n"+"="*10+" FOR REFERENCE DATA "+"="*10)
+    print("Average SNR is {} dBm".format(ref_snr))
+    print("Average Max Signal is {} dBm".format(ref_max_signal))
+    print("Average of the noise floor is {} dBm".format(ref_noise_floors))
+
+
     get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq,
-                       pump_power, SAxdata, cutOff=cutOff_around_SA_peak,
-                       title="TWPA Tune Up", xlabel='Pump Power (dBm)', 
-                       ylabel='Pump Frequency (Hz)', zlabel='SNR', 
+                       pump_power, SAxdata, ref_snr, cutOff=cutOff_around_SA_peak,
+                       title="TWPA Tune Up", xlabel=power_channel_name, 
+                       ylabel=freq_channel_name, zlabel='SNR', 
                        fig_type=".png", path="figures")
 
 
     get_high_SNR_regions(signal,repeated, freq_range, power_range, pump_freq,
-                         pump_power, SAxdata, cutOff=cutOff_around_SA_peak, 
+                         pump_power, SAxdata, ref_snr, cutOff=cutOff_around_SA_peak, 
                          std_highSNR=std_highSNR)
