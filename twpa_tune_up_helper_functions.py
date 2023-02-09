@@ -25,7 +25,7 @@ def get_reference_data_SNR(labber_data_file, cutOff=10e3):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
 
-    return calculate_SNRs(average_lin_signal,SAxdata,cutOff).flatten()
+    return np.array(calculate_SNRs(average_lin_signal,SAxdata,cutOff)).flatten()
 
 
 def calculate_mean_SNR_from_Labber_file(labber_data_file, cutOff = 10e3):
