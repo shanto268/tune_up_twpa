@@ -35,19 +35,21 @@ if __name__ == "__main__":
 
     ref_snr, ref_max_signal, ref_noise_floors = get_reference_data_SNR(ref_data_file,cutOff_around_SA_peak)
 
-    print("\n\n"+"="*10+" FOR REFERENCE DATA "+"="*10)
+    print("\n\n"+"="*10+" REFERENCE DATA "+"="*10)
     print("Average SNR is {} dBm".format(ref_snr))
     print("Average Max Signal is {} dBm".format(ref_max_signal))
     print("Average of the noise floor is {} dBm".format(ref_noise_floors))
+    print("="*40+"\n\n\n")
 
 
     get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq,
                        pump_power, SAxdata, ref_snr, cutOff=cutOff_around_SA_peak,
-                       title="TWPA Tune Up", xlabel=power_channel_name, 
+                       xlabel=power_channel_name,
                        ylabel=freq_channel_name, zlabel='SNR', 
                        fig_type=".png", path="figures")
 
 
+    print("\n\n"+"="*10+" TWPA Optimal Parameters"+"="*10)
     get_high_SNR_regions(signal,repeated, freq_range, power_range, pump_freq,
-                         pump_power, SAxdata, ref_snr, cutOff=cutOff_around_SA_peak, 
+                         pump_power, SAxdata, ref_snr, cutOff=cutOff_around_SA_peak,
                          std_highSNR=std_highSNR)
