@@ -13,8 +13,22 @@ from fitTools.utilities import Watt2dBm, dBm2Watt, VNA2dBm
 import Labber
 
 
+def get_reference_data_SNR(labber_data_file, cutOff=10e3):
+    lf = Labber.LogFile(labber_data_file)
+    repeated = len(lf.getStepChannels()[0]["values"])
+    cutOff_around_SA_peak = 10e3 # Hz
+    SA_channel_name = lf.getLogChannels()[0]["name"]
+    signal = lf.getData(name = SA_channel_name)
+    linsig = dBm2Watt(signal)
+    SAxdata, SAydata = lf.getTraceXY(y_channel=SA_channel_name) # gives last trace from SA
 
-def calculate_mean_SNR_from_Labber_file(labber_data_file5, cutOff = 10e3):
+    average_signal = get_average_of_N_traces(signal,repeated)
+    average_lin_signal = dBm2Watt(average_signal)
+
+    return np.array(calculate_SNRs(average_lin_signal,SAxdata,cutOff)).flatten()
+
+
+def calculate_mean_SNR_from_Labber_file(labber_data_file, cutOff = 10e3):
     """
     """
     lf = Labber.LogFile(labber_data_file)
@@ -69,7 +83,7 @@ def get_signal_stats(linsig,SAxdata,cutOff=10e3):
     # return [snr, max_signal, noise_floor]
     
 
-def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, cutOff=10e3, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR', fig_type=".png", path="figures"):
+def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, ref_SNR, cutOff=10e3, title="SNR Improvement with TWPA", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR', fig_type=".png", path="figures"):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
     
@@ -78,11 +92,12 @@ def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump
 
     SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
     
-    SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range))
+    SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range)) - ref_SNR
     
     create_heatmap(SNRs_reshaped, pump_powers, pump_freqs, title, xlabel, ylabel, zlabel,fig_type,path)
     
-def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pump_power, SAxdata, cutOff=10e3, std_highSNR=1.75):
+
+def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pump_power, SAxdata, ref_SNR, cutOff=10e3, std_highSNR=1.75):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
 
@@ -90,15 +105,14 @@ def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pum
     pump_powers = np.linspace(pump_power[0][0],pump_power[-1][-1],power_range)
 
     SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
-    SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range))
+    SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range)) - ref_SNR
 
     meanSNR = np.mean(SNRs_reshaped)
     region = get_config_for_high_SNR(SNRs_reshaped,x=pump_powers, y=pump_freqs,std_dev=std_highSNR)
     std_message = f"Region of High SNR\n[i.e SNR > mean(SNR) * std_dev(SNR)]\nmean(SNR) = {meanSNR:.3f}, std_dev(SNR) = {std_highSNR:.2f}"
-    create_heatmap(region, pump_powers, pump_freqs, title = std_message, xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',)
-
-    # print("="*30+f"\n\nHigh SNR Regions:\n{std_message}\n\nFormat: (power,frequency,SNR)\n\n"+str(region).replace("), ","),\n ")+"\n\n"+"="*30)
-    return region
+    create_heatmap(region, pump_powers, pump_freqs, title = std_message, xlabel='Pump Power (dBm)', ylabel='Pump Frequency (GHz)', zlabel='SNR',)
+    print_coordinates(get_coordinates(pump_powers, pump_freqs,region))
+    return get_coordinates(pump_powers, pump_freqs,region)
 
 def calculate_SNRs(average_lin_signal,SAxdata,cutOff=10e3):
     SNRs = []
@@ -129,6 +143,21 @@ def figure_name_maker(title,fig_type=".png",path="figures"):
     dt = now.strftime("_%m_%d_%Y_%H%M%S")
     name = abs_path + title + dt + fig_type 
     return name
+
+
+def get_coordinates(x,y,z):
+    mask = np.isfinite(z)
+    xx,yy = np.array(np.meshgrid(x, y))
+    masked_x = mask*xx
+    masked_y = mask*yy
+    x = masked_x[masked_x>0]
+    y = masked_y[masked_y>0]
+    z = z[np.isfinite(z)]
+    return np.array((x,y,z)).T
+
+def print_coordinates(arr):
+    for i in range(arr.shape[0]):
+        print(f"SNR = {arr[i][2]:.3f} for Power = {arr[i][0]} dBm and Frequency = {arr[i][1]} Hz")
 
 # def create_heatmap(z, x, y, title="TWPA Tune Up", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR',fig_type=".png",path="figures"):
 def create_heatmap(z, x, y, title="", xlabel='', ylabel='', zlabel='',fig_type=".png",path="figures"):
