@@ -7,6 +7,7 @@ from twpa_tune_up_helper_functions import *
 
 if __name__ == "__main__":
     labber_data_file = str(input("Labber File Location: "))
+    lf = Labber.LogFile(labber_data_file)
 
     repeated = len(lf.getStepChannels()[0]["values"])
     power_range = len(lf.getStepChannels()[1]["values"])
@@ -15,7 +16,6 @@ if __name__ == "__main__":
     std_highSNR = 1.15 # cut off point for determining high SNR
     cutOff_around_SA_peak = 10e3 # Hz
 
-    lf = Labber.LogFile(labber_data_file)
 
     power_channel_name = lf.getStepChannels()[1]["name"]
     freq_channel_name = lf.getStepChannels()[2]["name"]
