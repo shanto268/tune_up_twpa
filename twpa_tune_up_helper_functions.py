@@ -1,31 +1,28 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import os
 import sys
-import matplotlib
-
-
 from datetime import datetime
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
-from scipy.signal import find_peaks, peak_prominences, peak_widths
-from fitTools.utilities import Watt2dBm, dBm2Watt, VNA2dBm
+
 import Labber
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from fitTools.utilities import VNA2dBm, Watt2dBm, dBm2Watt
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.signal import find_peaks, peak_prominences, peak_widths
 
 
-def get_reference_data_SNR(labber_data_file, cutOff=10e3):
+def get_reference_data_SNR(labber_data_file, cutOff=10e3,plot=False):
     lf = Labber.LogFile(labber_data_file)
     repeated = len(lf.getStepChannels()[0]["values"])
-    cutOff_around_SA_peak = 10e3 # Hz
     SA_channel_name = lf.getLogChannels()[0]["name"]
     signal = lf.getData(name = SA_channel_name)
-    linsig = dBm2Watt(signal)
     SAxdata, SAydata = lf.getTraceXY(y_channel=SA_channel_name) # gives last trace from SA
 
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
 
-    return np.array(calculate_SNRs(average_lin_signal,SAxdata,cutOff)).flatten()
+    return np.array(calculate_SNRs(average_lin_signal,SAxdata,cutOff,plot)).flatten()
 
 
 def calculate_mean_SNR_from_Labber_file(labber_data_file, cutOff = 10e3):
@@ -83,28 +80,28 @@ def get_signal_stats(linsig,SAxdata,cutOff=10e3):
     # return [snr, max_signal, noise_floor]
     
 
-def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, ref_SNR, cutOff=10e3, title="SNR Improvement with TWPA", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR', fig_type=".png", path="figures"):
+def get_SNR_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, ref_SNR, cutOff=10e3, title="SNR Improvement with TWPA", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='SNR', fig_type=".png", path="figures", plot=False):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
     
     pump_freqs = np.linspace(pump_freq[0][0],pump_freq[-1][-1],freq_range)
     pump_powers = np.linspace(pump_power[0][0],pump_power[-1][-1],power_range)
 
-    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
+    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff,plot)
     
     SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range)) - ref_SNR
     
     create_heatmap(SNRs_reshaped, pump_powers, pump_freqs, title, xlabel, ylabel, zlabel,fig_type,path)
     
 
-def get_gain_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, ref_max_signal, cutOff=10e3, title="Gain with TWPA", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='Signal Power (dBm)', fig_type=".png", path="figures"):
+def get_gain_space_plot(signal,repeated, freq_range, power_range, pump_freq, pump_power, SAxdata, ref_max_signal, cutOff=10e3, title="Gain with TWPA", xlabel='Pump Power (dBm)', ylabel='Pump Frequency (Hz)', zlabel='Signal Power (dBm)', fig_type=".png", path="figures", plot=False):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
     
     pump_freqs = np.linspace(pump_freq[0][0],pump_freq[-1][-1],freq_range)
     pump_powers = np.linspace(pump_power[0][0],pump_power[-1][-1],power_range)
 
-    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
+    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff,plot)
     
     SNRs_reshaped = np.reshape(max_signals, (freq_range,power_range)) - ref_max_signal
     
@@ -113,14 +110,14 @@ def get_gain_space_plot(signal,repeated, freq_range, power_range, pump_freq, pum
 
 
 
-def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pump_power, SAxdata, ref_SNR, cutOff=10e3, std_highSNR=1.75):
+def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pump_power, SAxdata, ref_SNR, cutOff=10e3, std_highSNR=1.75, plot=False):
     average_signal = get_average_of_N_traces(signal,repeated)
     average_lin_signal = dBm2Watt(average_signal)
 
     pump_freqs = np.linspace(pump_freq[0][0],pump_freq[-1][-1],freq_range)
     pump_powers = np.linspace(pump_power[0][0],pump_power[-1][-1],power_range)
 
-    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff)
+    SNRs, max_signals, noise_floors = calculate_SNRs(average_lin_signal,SAxdata,cutOff, plot)
     SNRs_reshaped = np.reshape(SNRs, (freq_range,power_range)) - ref_SNR
 
     meanSNR = np.mean(SNRs_reshaped)
@@ -130,21 +127,35 @@ def get_high_SNR_regions(signal,repeated, freq_range, power_range,pump_freq, pum
     print_coordinates(get_coordinates(pump_powers, pump_freqs,region))
     return get_coordinates(pump_powers, pump_freqs,region)
 
-def calculate_SNRs(average_lin_signal,SAxdata,cutOff=10e3):
+def calculate_SNRs(average_lin_signal, SAxdata, cutOff=10e3, plot=False):
     SNRs = []
     max_signals = []
     noise_floors = []
 
     for signal in average_lin_signal:
-        snrs, max_signal, noise_floor = get_signal_stats(signal,SAxdata,cutOff)
+        snrs, max_signal, noise_floor = get_signal_stats(signal, SAxdata, cutOff)
         SNRs.append(snrs)
         max_signals.append(max_signal)
         noise_floors.append(noise_floor)
 
+        if plot:
+        # Plot the data
+            plt.figure(figsize=(10, 6))
+            plt.plot(SAxdata, Watt2dBm(signal), label="Signal (dBm)")
+            plt.axhline(max_signal, color='r', linestyle='--', label=f"Max Signal: {max_signal:.2f} dBm")
+            plt.axhline(noise_floor, color='g', linestyle='--', label=f"Noise Floor: {noise_floor:.2f} dBm")
+            plt.plot([SAxdata[np.argmax(signal)], SAxdata[np.argmax(signal)]], [noise_floor, max_signal], color='b', linestyle='--', label=f"SNR: {snrs:.2f} dB")
+            plt.xlabel("Frequency (Hz)")
+            plt.ylabel("Power (dBm)")
+            plt.title("Signal, Max Signal, Noise Floor, and SNR")
+            plt.legend()
+            plt.grid()
+            plt.show()
+
     SNRs = np.array(SNRs)
     max_signals = np.array(max_signals)
     noise_floors = np.array(noise_floors)
-    
+
     return SNRs, max_signals, noise_floors
 
 

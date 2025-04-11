@@ -2,3 +2,7 @@ data/*
 figures/*
 .DS_Store
 .ipynb_checkpoints/*
+.vscode/settings.json
+__pycache__/twpa_tune_up_helper_functions.cpython-38.pyc
+__pycache__
+__pycache__/.*
